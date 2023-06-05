@@ -10,12 +10,23 @@ if (POLICY CMP0141)
 endif()
 
 project ("MissileCommander" LANGUAGES CXX)
+set(EXECUTABLE "MissileCommander")
+
 
 # add source files
 file(GLOB SOURCES "Source/*.cpp")
-add_executable (MissileCommander ${SOURCES})
+add_executable (${EXECUTABLE} ${SOURCES})
 
 # header files
 include_directories("Include")
+
+# Link 3rd party libraries
+if(MSVC)
+    target_include_directories(${EXECUTABLE} PRIVATE Deps/raylib/include)
+    # link static library
+    target_link_libraries(${EXECUTABLE} PRIVATE ${CMAKE_SOURCE_DIR}/Deps/raylib/lib/raylib.lib)
+    set_target_properties(${EXECUTABLE} PROPERTIES LINK_FLAGS "/NODEFAULTLIB:\"msvcrt.lib\"")
+    target_link_libraries(${EXECUTABLE} PRIVATE winmm)
+endif()
 
 

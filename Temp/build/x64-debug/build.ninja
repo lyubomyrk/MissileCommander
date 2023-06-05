@@ -51,7 +51,7 @@ build cmake_object_order_depends_target_MissileCommander: phony || CMakeFiles\Mi
 
 build CMakeFiles\MissileCommander.dir\Source\MissileCommander.cpp.obj: CXX_COMPILER__MissileCommander_unscanned_Debug C$:\Users\lyubomyr\Documents\dev\MissileCommander\Source\MissileCommander.cpp || cmake_object_order_depends_target_MissileCommander
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MDd /Ob0 /Od /RTC1 -Zi
-  INCLUDES = -IC:\Users\lyubomyr\Documents\dev\MissileCommander\Include
+  INCLUDES = -IC:\Users\lyubomyr\Documents\dev\MissileCommander\Include -IC:\Users\lyubomyr\Documents\dev\MissileCommander\Deps\raylib\include
   OBJECT_DIR = CMakeFiles\MissileCommander.dir
   OBJECT_FILE_DIR = CMakeFiles\MissileCommander.dir\Source
   TARGET_COMPILE_PDB = CMakeFiles\MissileCommander.dir\
@@ -65,10 +65,10 @@ build CMakeFiles\MissileCommander.dir\Source\MissileCommander.cpp.obj: CXX_COMPI
 #############################################
 # Link the executable MissileCommander.exe
 
-build MissileCommander.exe: CXX_EXECUTABLE_LINKER__MissileCommander_Debug CMakeFiles\MissileCommander.dir\Source\MissileCommander.cpp.obj
+build MissileCommander.exe: CXX_EXECUTABLE_LINKER__MissileCommander_Debug CMakeFiles\MissileCommander.dir\Source\MissileCommander.cpp.obj | C$:\Users\lyubomyr\Documents\dev\MissileCommander\Deps\raylib\lib\raylib.lib
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MDd /Ob0 /Od /RTC1 -Zi
-  LINK_FLAGS = /machine:x64 /debug /INCREMENTAL /subsystem:console
-  LINK_LIBRARIES = kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib
+  LINK_FLAGS = /machine:x64 /debug /INCREMENTAL /subsystem:console /NODEFAULTLIB:"msvcrt.lib"
+  LINK_LIBRARIES = C:\Users\lyubomyr\Documents\dev\MissileCommander\Deps\raylib\lib\raylib.lib  winmm.lib  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib
   OBJECT_DIR = CMakeFiles\MissileCommander.dir
   POST_BUILD = cd .
   PRE_LINK = cd .
