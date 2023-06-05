@@ -13,6 +13,7 @@ struct Missile {
 	Vector2 pos;
 	Vector2 vel;
 	Vector2 dest;
+	bool disassembly;
 };
 
 int main()
@@ -39,12 +40,16 @@ int main()
 			Vector2 cannon_dest_diff = { missile_dest.x - cannon.x - cannon_offset.x, missile_dest.y - cannon.y };
 			Vector2 missile_vel = Vector2Scale(Vector2Normalize(cannon_dest_diff), missile_speed);
 			Vector2 missile_pos = { cannon.x + cannon_offset.x, cannon.y };
-			Missile* new_missile = new Missile{ missile_pos, missile_vel, missile_dest };
+			Missile* new_missile = new Missile{ missile_pos, missile_vel, missile_dest, false };
 			missiles.push_back(new_missile);
 		}
 
 		for (auto& missile : missiles) {
-			missile->pos = Vector2Add(missile->pos, Vector2Scale(missile->vel, dt));
+			if (!missile->disassembly)
+				missile->pos = Vector2Add(missile->pos, Vector2Scale(missile->vel, dt));
+			if (Vector2Distance(missile->pos, missile->dest) <= 5.) {
+				missile->disassembly = true;
+			}
 		}
 
 		// @formatter off
@@ -63,6 +68,11 @@ int main()
 
 			// draw missiles
 			for (auto& missile : missiles) {
+				if (missile->disassembly) {
+					DrawCircle(missile->pos.x, missile->pos.y, 5, WHITE);
+					missile->vel = { 0., 0, };
+					continue;
+				}
 				Vector2 line_start = { cannon.x + cannon_offset.x, cannon.y };
 				Vector2 line_end = { missile->pos.x, missile->pos.y };
 				DrawLineV(line_start, line_end, GREEN);
