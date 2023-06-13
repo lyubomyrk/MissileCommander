@@ -1,3 +1,0 @@
-C:/Users/lyubomyr/Documents/dev/MissileCommander/Temp/build/x64-debug/CMakeFiles/MissileCommander.dir
-C:/Users/lyubomyr/Documents/dev/MissileCommander/Temp/build/x64-debug/CMakeFiles/edit_cache.dir
-C:/Users/lyubomyr/Documents/dev/MissileCommander/Temp/build/x64-debug/CMakeFiles/rebuild_cache.dir

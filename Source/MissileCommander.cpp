@@ -1,7 +1,7 @@
 ﻿// MissileCommander.cpp : Defines the entry point for the application.
 //
-#include <string>
 #include <vector>
+#include <string>
 
 #include "MissileCommander.hpp"
 #include "raylib.h"
@@ -9,100 +9,180 @@
 
 using namespace std;
 
-struct Missile {
-  Vector2 pos;
-  Vector2 vel;
-  Vector2 dest;
-  bool disassembly;
-  float radius_dir;
-  float explosion_radius;
-  float max_radius;
-  float growth_speed;
+struct Silo {
+	Vector2 pos;
+	int missiles;
 };
 
-int main() {
-  const int ScreenWidth = 800;
-  const int ScreenHeight = 450;
+// Generic representation of every missile in game
+struct Missile {
+  Vector2 ipos;
+	Vector2 pos;
+	Vector2 vel;
+	Vector2 dest;
+};
 
-  InitWindow(ScreenWidth, ScreenHeight, "Missile Commander!");
-  SetTargetFPS(60);
+// Generic representation of every explosion in game
+struct Explosion {
+	Vector2 pos;
+	float rad;
+	float max_rad;
+	float growth_dir; // 1 outward, -1 inward
+	float growth_speed;
+};
 
-  vector<Missile *> missiles;
+const int ScreenWidth = 800;
+const int ScreenHeight = 450;
 
-  while (!WindowShouldClose()) {
-    float dt = GetFrameTime();
+const Vector2 ground_dims = { ScreenWidth, 50. };
 
-    Rectangle ground = {0., ScreenHeight - 50, ScreenWidth, 50};
-    Rectangle cannon = {ScreenWidth / 2 - 25, ground.y - 25, 50, 25};
-    Vector2 cannon_offset = {25., 25. / 2};
-    Vector2 mouse = GetMousePosition();
+const int starting_missile_amount = -1.;
+const Vector2 silo_dims = { 50., 25. };
+const Vector2 silo_offset = { silo_dims.x / 2, silo_dims.y / 2 };
+const float cannon_length = 30;
+const float cannon_thickness = 5;
 
-    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-      Vector2 missile_dest = mouse;
-      float missile_speed = 300;
-      Vector2 cannon_dest_diff = {missile_dest.x - cannon.x - cannon_offset.x,
-                                  missile_dest.y - cannon.y};
-      Vector2 missile_vel =
-          Vector2Scale(Vector2Normalize(cannon_dest_diff), missile_speed);
-      Vector2 missile_pos = {cannon.x + cannon_offset.x, cannon.y};
-      Missile *new_missile =
-          new Missile{missile_pos, missile_vel, missile_dest, false};
-      new_missile->max_radius = 25;
-      missiles.push_back(new_missile);
+const float missile_speed = 300;
+const float missile_dest_tolerance = 5.;
+
+const float explosion_growth_speed = 75.;
+const float explosion_max_rad = 40.;
+
+int main()
+{
+	
+	InitWindow(ScreenWidth, ScreenHeight, "Missile Commander!");
+	SetTargetFPS(60);
+
+	vector<Silo*> silos;
+	vector<Missile*> missiles;
+	vector<Explosion*> explosions;
+
+	// Create terrain
+	Rectangle ground_rec = { 0, ScreenHeight - ground_dims.y, ground_dims.x, ground_dims.y };
+
+	// Create one silo for testing
+	Silo* silo = new Silo;
+	if (starting_missile_amount < 0)
+		silo->missiles = 9999;
+	silo->pos = { ScreenWidth / 2, ground_rec.y - silo_offset.y };
+	silos.push_back(silo);
+
+	while (!WindowShouldClose()) 
+	{
+		float dt = GetFrameTime();
+		Vector2 mouse = GetMousePosition();
+
+		// Get user input
+		if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) 
+		{
+			Missile* new_missile = new Missile;
+			new_missile->dest = mouse;
+			Vector2 mouse_diff = Vector2Subtract(mouse, silos[0]->pos);
+			Vector2 norm = Vector2Normalize(mouse_diff);
+      new_missile->ipos = Vector2Add(silos[0]->pos, Vector2Scale(norm, cannon_length));
+      new_missile->pos = new_missile->ipos;
+			new_missile->vel = Vector2Scale(norm, missile_speed);
+			missiles.push_back(new_missile);
+		}
+
+		// Physics update
+		for (auto& missile : missiles)
+		{
+			Vector2 diff = Vector2Scale(missile->vel, dt);
+			missile->pos = Vector2Add(missile->pos, diff);
+		}
+
+    for (auto& explosion : explosions) 
+    {
+      explosion->rad += explosion->growth_dir * explosion->growth_speed * dt;
+      if (explosion->rad >= explosion->max_rad) 
+      {
+        explosion->growth_dir = -1.;
+      }
     }
 
-    for (auto &missile : missiles) {
-      if (!missile->disassembly) {
-        missile->pos = Vector2Add(missile->pos, Vector2Scale(missile->vel, dt));
-        // BUG if missiles dont explode check here
-        if (Vector2Distance(missile->pos, missile->dest) <= 5.) {
-          missile->disassembly = true;
-          missile->explosion_radius = 0.1;
-          missile->radius_dir = 1;
-          missile->growth_speed = 10;
-        }
-      }
-      if (missile->disassembly) {
-        missile->explosion_radius =
-            missile->explosion_radius +
-            missile->radius_dir * missile->growth_speed * dt;
-        if (missile->explosion_radius >= missile->max_radius) {
-          missile->radius_dir = -1.;
-        }
+		// Condition checks
+		for (int i = missiles.size() - 1; i >= 0; i--)
+		{
+			Missile* missile = missiles[i];
+			Vector2 diff = Vector2Subtract(missile->dest, missile->pos);
+			float length = Vector2Length(diff);
+			if (length < missile_dest_tolerance)
+			{
+        Explosion* new_explosion = new Explosion;
+        new_explosion->pos = missile->dest;
+        new_explosion->rad = 0.;
+        new_explosion->growth_dir = 1.;
+        new_explosion->growth_speed = explosion_growth_speed;
+        new_explosion->max_rad = explosion_max_rad;
+        explosions.push_back(new_explosion);
+
+				delete missile;
+				missile = nullptr;
+				missiles.erase(missiles.begin() + i);
+			}		
+		}
+
+    for (int i = explosions.size() - 1; i >= 0; i--) 
+    {
+      Explosion* explosion = explosions[i];
+      if (explosion->rad < 0.) 
+      {
+        delete explosion;
+        explosion = nullptr;
+        explosions.erase(explosions.begin() + i);
       }
     }
 
-    ClearBackground(BLACK);
-    DrawFPS(10, 10);
-    // draw environment
-    DrawRectangleRec(ground, GREEN);
-    // draw cannons
-    DrawRectangleRec(cannon, BLUE);
-    DrawLine(ScreenWidth / 2, 0, ScreenWidth / 2, ScreenHeight, PURPLE);
+		// @formatter off
+		BeginDrawing();
 
-    // draw crosshair
-    DrawLine(mouse.x - 5, mouse.y - 5, mouse.x + 5, mouse.y + 5, RED);
-    DrawLine(mouse.x + 5, mouse.y - 5, mouse.x - 5, mouse.y + 5, RED);
+			ClearBackground(BLACK);
+			DrawFPS(10, 10);
 
-    // draw missiles
-    for (auto &missile : missiles) {
-      if (missile->disassembly) {
-        DrawCircle(missile->pos.x, missile->pos.y, missile->explosion_radius,
-                   WHITE);
-        missile->vel = {
-            0.,
-            0,
-        };
-        continue;
+			// Draw ground
+			DrawRectangleRec(ground_rec, GREEN);
+
+			// Draw missiles
+			for (auto& missile : missiles)
+			{
+				Vector2 start = missile->ipos;
+				Vector2 end = missile->pos;
+				DrawLineV(start, end, GREEN);
+			}
+			
+			// Draw explosions
+      for (auto& explosion : explosions)
+      {
+        DrawCircleV(explosion->pos, explosion->rad, WHITE);
       }
-      Vector2 line_start = {cannon.x + cannon_offset.x, cannon.y};
-      Vector2 line_end = {missile->pos.x, missile->pos.y};
-      DrawLineV(line_start, line_end, GREEN);
-    }
-    EndDrawing();
-  }
 
-  CloseWindow();
+			// Draw cannons
+			for (auto& silo : silos)
+			{
+				Rectangle silo_rec = { silo->pos.x, silo->pos.y, silo_dims.x, silo_dims.y };
+				DrawRectanglePro(silo_rec, silo_offset, 0., BROWN);
+				Vector2 mouse_diff = Vector2Subtract(mouse, silo->pos);
+				Vector2 norm = Vector2Normalize(mouse_diff);
+				DrawLineEx(
+					silo->pos,
+					Vector2Add(silo->pos, Vector2Scale(norm, cannon_length)),
+					cannon_thickness,
+					WHITE
+				);
+			}
 
-  return 0;
+
+			// draw crosshair
+			DrawLine(mouse.x - 5, mouse.y - 5, mouse.x + 5, mouse.y + 5, RED);
+			DrawLine(mouse.x + 5, mouse.y - 5, mouse.x - 5, mouse.y + 5, RED);
+
+		EndDrawing();
+		// @formatter on
+	}
+
+	CloseWindow();
+
+	return 0;
 }
