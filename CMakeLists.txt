@@ -22,11 +22,15 @@ include_directories("Include")
 
 # Link 3rd party libraries
 if(MSVC)
-    target_include_directories(${EXECUTABLE} PRIVATE Deps/raylib/include)
-    # link static library
-    target_link_libraries(${EXECUTABLE} PRIVATE ${CMAKE_SOURCE_DIR}/Deps/raylib/lib/raylib.lib)
-    set_target_properties(${EXECUTABLE} PROPERTIES LINK_FLAGS "/NODEFAULTLIB:\"msvcrt.lib\"")
-    target_link_libraries(${EXECUTABLE} PRIVATE winmm)
+  target_include_directories(${EXECUTABLE} PRIVATE Deps/raylib-win64/include)
+  # link static library
+  target_link_libraries(${EXECUTABLE} PRIVATE ${CMAKE_SOURCE_DIR}/Deps/raylib-win64/lib/raylib.lib)
+  set_target_properties(${EXECUTABLE} PROPERTIES LINK_FLAGS "/NODEFAULTLIB:\"msvcrt.lib\"")
+  target_link_libraries(${EXECUTABLE} PRIVATE winmm)
 endif()
 
-
+if (UNIX)
+  target_include_directories(${EXECUTABLE} PRIVATE Deps/raylib-linux/include)
+  # link static library
+  target_link_libraries(${EXECUTABLE} PRIVATE ${CMAKE_SOURCE_DIR}/Deps/raylib-linux/lib/libraylib.a)
+endif()
