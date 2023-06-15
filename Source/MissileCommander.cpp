@@ -47,7 +47,7 @@ const float cannon_thickness = 5;
 const float missile_speed = 250;
 const float missile_dest_tolerance = 5.;
 
-const float explosion_growth_speed = 75.;
+const float explosion_growth_speed = 50.;
 const float explosion_max_rad = 40.;
 
 const float enemy_missile_speed = 50.;
@@ -109,6 +109,28 @@ int main() {
       }
     }
 
+    // Collision checks
+    for (int j = 0; j < explosions.size(); j++) {
+      Explosion *explosion = explosions[j];
+      for (int i = missiles.size() - 1; i >= 0; i--) {
+        Missile *missile = missiles[i];
+        Vector2 diff = Vector2Subtract(missile->pos, explosion->pos);
+        float length = Vector2Length(diff);
+        if (length <= explosion->rad) {
+          Explosion *new_explosion = new Explosion;
+          new_explosion->pos = missile->pos;
+          new_explosion->rad = 0.;
+          new_explosion->growth_dir = 1.;
+          new_explosion->growth_speed = explosion_growth_speed;
+          new_explosion->max_rad = explosion_max_rad;
+          explosions.push_back(new_explosion);
+
+          delete missile;
+          missiles.erase(missiles.begin() + i);
+        }
+    }
+    }
+
     // Condition checks
     if (enemy_missile_spawn_timer >= enemy_missile_spawn_time) {
       enemy_missile_spawn_timer = 0.;
@@ -139,7 +161,6 @@ int main() {
         explosions.push_back(new_explosion);
 
         delete missile;
-        missile = nullptr;
         missiles.erase(missiles.begin() + i);
       }
     }
