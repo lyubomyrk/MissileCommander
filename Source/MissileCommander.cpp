@@ -38,9 +38,11 @@ const int ScreenHeight = 450;
 
 const Vector2 ground_dims = {ScreenWidth, 50.};
 
+const int silo_count = 3;
 const int starting_missile_amount = -1.;
 const Vector2 silo_dims = {50., 25.};
 const Vector2 silo_offset = {silo_dims.x / 2, silo_dims.y / 2};
+const float silo_screen_offset = 100.;
 const float cannon_length = 30;
 const float cannon_thickness = 5;
 
@@ -69,11 +71,24 @@ int main() {
                           ground_dims.y};
 
   // Create one silo for testing
-  Silo *silo = new Silo;
+  Silo *left_silo = new Silo;
   if (starting_missile_amount < 0)
-    silo->missiles = 9999;
-  silo->pos = {ScreenWidth / 2, ground_rec.y - silo_offset.y};
-  silos.push_back(silo);
+    left_silo->missiles = 9999;
+  left_silo->pos = {silo_screen_offset, ground_rec.y - silo_offset.y};
+  silos.push_back(left_silo);
+
+  Silo *middle_silo = new Silo;
+  if (starting_missile_amount < 0)
+    middle_silo->missiles = 9999;
+  middle_silo->pos = {ScreenWidth / 2, ground_rec.y - silo_offset.y};
+  silos.push_back(middle_silo);
+
+  Silo *right_silo = new Silo;
+  if (starting_missile_amount < 0)
+    right_silo->missiles = 9999;
+  right_silo->pos = {ScreenWidth - silo_screen_offset,
+                     ground_rec.y - silo_offset.y};
+  silos.push_back(right_silo);
 
   float enemy_missile_spawn_timer = 0.;
 
@@ -86,11 +101,11 @@ int main() {
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
       Missile *new_missile = new Missile;
       new_missile->dest = mouse;
-      Vector2 mouse_diff =
-          Vector2Subtract(mouse, silos[0]->pos); // TODO CHANGE THIS
+      int silo_index = mouse.x / (ScreenWidth / silo_count);
+      Vector2 mouse_diff = Vector2Subtract(mouse, silos[silo_index]->pos);
       Vector2 norm = Vector2Normalize(mouse_diff);
-      new_missile->ipos = Vector2Add(
-          silos[0]->pos, Vector2Scale(norm, cannon_length)); // TODO CHANGE THIS
+      new_missile->ipos =
+          Vector2Add(silos[silo_index]->pos, Vector2Scale(norm, cannon_length));
       new_missile->pos = new_missile->ipos;
       new_missile->vel = Vector2Scale(norm, missile_speed);
       missiles.push_back(new_missile);
@@ -128,7 +143,7 @@ int main() {
           delete missile;
           missiles.erase(missiles.begin() + i);
         }
-    }
+      }
     }
 
     // Condition checks
@@ -139,7 +154,8 @@ int main() {
         Missile *new_missile = new Missile;
         new_missile->pos = {(float)rng.rand(ScreenWidth), 0};
         new_missile->ipos = new_missile->pos;
-        new_missile->dest = silos[0]->pos; // TODO CHANGE THIS
+        int silo_index = (int)rng.rand(silo_count);
+        new_missile->dest = silos[silo_index]->pos;
         Vector2 diff = Vector2Subtract(new_missile->dest, new_missile->pos);
         Vector2 norm = Vector2Normalize(diff);
         new_missile->vel = Vector2Scale(norm, enemy_missile_speed);
