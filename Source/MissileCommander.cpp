@@ -56,9 +56,15 @@ const float enemy_missile_speed = 50.;
 const float enemy_missile_spawn_time = 2.5;
 
 int main() {
-
   InitWindow(ScreenWidth, ScreenHeight, "Missile Commander!");
   SetTargetFPS(60);
+
+  InitAudioDevice();
+
+  while (!IsAudioDeviceReady());
+
+  Sound launch_sound = LoadSound("../Assets/Sound/launch.ogg");
+  Sound explosion_sound = LoadSound("../Assets/Sound/explosion.ogg");
 
   WELL512 rng(0);
 
@@ -99,6 +105,7 @@ int main() {
 
     // Get user input
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+      PlaySound(launch_sound);
       Missile *new_missile = new Missile;
       new_missile->dest = mouse;
       int silo_index = mouse.x / (ScreenWidth / silo_count);
@@ -125,6 +132,8 @@ int main() {
     }
 
     // Collision checks
+
+    // Check missile/explosion collision
     for (int j = 0; j < explosions.size(); j++) {
       Explosion *explosion = explosions[j];
       for (int i = missiles.size() - 1; i >= 0; i--) {
@@ -139,7 +148,6 @@ int main() {
           new_explosion->growth_speed = explosion_growth_speed;
           new_explosion->max_rad = explosion_max_rad;
           explosions.push_back(new_explosion);
-
           delete missile;
           missiles.erase(missiles.begin() + i);
         }
@@ -163,6 +171,7 @@ int main() {
       }
     };
 
+    // Check missile destination reached
     for (int i = missiles.size() - 1; i >= 0; i--) {
       Missile *missile = missiles[i];
       Vector2 diff = Vector2Subtract(missile->dest, missile->pos);
@@ -175,6 +184,7 @@ int main() {
         new_explosion->growth_speed = explosion_growth_speed;
         new_explosion->max_rad = explosion_max_rad;
         explosions.push_back(new_explosion);
+        PlaySound(explosion_sound);
 
         delete missile;
         missiles.erase(missiles.begin() + i);
@@ -230,6 +240,7 @@ int main() {
     // @formatter on
   }
 
+  CloseAudioDevice();
   CloseWindow();
 
   return 0;
