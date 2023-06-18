@@ -18,7 +18,7 @@ file(GLOB SOURCES "Source/*.cpp")
 add_executable (${EXECUTABLE} ${SOURCES})
 
 # header files
-include_directories("Include")
+include_directories("Include/")
 
 # Link 3rd party libraries
 if(MSVC)

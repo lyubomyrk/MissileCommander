@@ -1,59 +1,8 @@
 ﻿// MissileCommander.cpp : Defines the entry point for the application.
-//
-#include <string>
-#include <vector>
-
-#include "raylib.h"
-#include "raymath.h"
 
 #include "MissileCommander.hpp"
-#include "WELL512.hpp"
 
 using namespace std;
-
-struct Silo {
-  Vector2 pos;
-  int missiles;
-};
-
-// Generic representation of every missile in game
-struct Missile {
-  Vector2 ipos;
-  Vector2 pos;
-  Vector2 vel;
-  Vector2 dest;
-};
-
-// Generic representation of every explosion in game
-struct Explosion {
-  Vector2 pos;
-  float rad;
-  float max_rad;
-  float growth_dir; // 1 outward, -1 inward
-  float growth_speed;
-};
-
-const int ScreenWidth = 800;
-const int ScreenHeight = 450;
-
-const Vector2 ground_dims = {ScreenWidth, 50.};
-
-const int silo_count = 3;
-const int starting_missile_amount = -1.;
-const Vector2 silo_dims = {50., 25.};
-const Vector2 silo_offset = {silo_dims.x / 2, silo_dims.y / 2};
-const float silo_screen_offset = 100.;
-const float cannon_length = 30;
-const float cannon_thickness = 5;
-
-const float missile_speed = 250;
-const float missile_dest_tolerance = 5.;
-
-const float explosion_growth_speed = 50.;
-const float explosion_max_rad = 40.;
-
-const float enemy_missile_speed = 50.;
-const float enemy_missile_spawn_time = 2.5;
 
 int main() {
   InitWindow(ScreenWidth, ScreenHeight, "Missile Commander!");
@@ -61,78 +10,65 @@ int main() {
 
   InitAudioDevice();
 
-  while (!IsAudioDeviceReady());
-
+  // LOAD ASSETS
   Sound launch_sound = LoadSound("../Assets/Sound/launch.ogg");
   Sound explosion_sound = LoadSound("../Assets/Sound/explosion.ogg");
 
+  // PREPARE RNG
   WELL512 rng(0);
 
-  vector<Silo *> silos;
-  vector<Missile *> missiles;
-  vector<Explosion *> explosions;
-
+  // PREPARE GAME STATE
   // Create terrain
   Rectangle ground_rec = {0, ScreenHeight - ground_dims.y, ground_dims.x,
                           ground_dims.y};
 
-  // Create one silo for testing
+  // Create silos
+  vector<Silo *> silos;
   Silo *left_silo = new Silo;
-  if (starting_missile_amount < 0)
-    left_silo->missiles = 9999;
   left_silo->pos = {silo_screen_offset, ground_rec.y - silo_offset.y};
   silos.push_back(left_silo);
 
   Silo *middle_silo = new Silo;
-  if (starting_missile_amount < 0)
-    middle_silo->missiles = 9999;
   middle_silo->pos = {ScreenWidth / 2, ground_rec.y - silo_offset.y};
   silos.push_back(middle_silo);
 
   Silo *right_silo = new Silo;
-  if (starting_missile_amount < 0)
-    right_silo->missiles = 9999;
   right_silo->pos = {ScreenWidth - silo_screen_offset,
                      ground_rec.y - silo_offset.y};
   silos.push_back(right_silo);
 
+  // Prepare missiles
+  vector<Missile *> missiles;
+  MissileFlyweight *player_missile_flyweight = new MissileFlyweight;
+  player_missile_flyweight->type = MissileType::Player;
+  player_missile_flyweight->color = GREEN;
+  player_missile_flyweight->speed = player_missile_speed;
+  MissileFlyweight *enemy_missile_flyweight = new MissileFlyweight;
+  enemy_missile_flyweight->type = MissileType::Enemy;
+  enemy_missile_flyweight->color = RED;
+  enemy_missile_flyweight->speed = enemy_missile_speed;
+
+  // Prepare explosions
+  vector<Explosion *> explosions;
+
+  // Create game timers
   float enemy_missile_spawn_timer = 0.;
 
+  // GAME LOOP
   while (!WindowShouldClose()) {
     float dt = GetFrameTime();
     enemy_missile_spawn_timer += dt;
     Vector2 mouse = GetMousePosition();
 
-    // Get user input
+    // User input
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
       PlaySound(launch_sound);
-      Missile *new_missile = new Missile;
-      new_missile->dest = mouse;
       int silo_index = mouse.x / (ScreenWidth / silo_count);
-      Vector2 mouse_diff = Vector2Subtract(mouse, silos[silo_index]->pos);
-      Vector2 norm = Vector2Normalize(mouse_diff);
-      new_missile->ipos =
-          Vector2Add(silos[silo_index]->pos, Vector2Scale(norm, cannon_length));
-      new_missile->pos = new_missile->ipos;
-      new_missile->vel = Vector2Scale(norm, missile_speed);
-      missiles.push_back(new_missile);
+      create_missile(missiles, silos[silo_index]->pos, mouse,
+                     player_missile_flyweight);
     }
 
-    // Physics update
-    for (auto &missile : missiles) {
-      Vector2 diff = Vector2Scale(missile->vel, dt);
-      missile->pos = Vector2Add(missile->pos, diff);
-    }
-
-    for (auto &explosion : explosions) {
-      explosion->rad += explosion->growth_dir * explosion->growth_speed * dt;
-      if (explosion->rad >= explosion->max_rad) {
-        explosion->growth_dir = -1.;
-      }
-    }
-
-    // Collision checks
-
+    // COLLISION CHECKS
     // Check missile/explosion collision
     for (int j = 0; j < explosions.size(); j++) {
       Explosion *explosion = explosions[j];
@@ -141,33 +77,23 @@ int main() {
         Vector2 diff = Vector2Subtract(missile->pos, explosion->pos);
         float length = Vector2Length(diff);
         if (length <= explosion->rad) {
-          Explosion *new_explosion = new Explosion;
-          new_explosion->pos = missile->pos;
-          new_explosion->rad = 0.;
-          new_explosion->growth_dir = 1.;
-          new_explosion->growth_speed = explosion_growth_speed;
-          new_explosion->max_rad = explosion_max_rad;
-          explosions.push_back(new_explosion);
+          create_explosion(explosions, missile->pos);
           delete missile;
           missiles.erase(missiles.begin() + i);
         }
       }
     }
 
-    // Condition checks
+    // STATUS
+    // Spawn enemy missiles
     if (enemy_missile_spawn_timer >= enemy_missile_spawn_time) {
       enemy_missile_spawn_timer = 0.;
       int count = rng.rand(3) + 1;
       for (int i = 0; i < count; i++) {
-        Missile *new_missile = new Missile;
-        new_missile->pos = {(float)rng.rand(ScreenWidth), 0};
-        new_missile->ipos = new_missile->pos;
-        int silo_index = (int)rng.rand(silo_count);
-        new_missile->dest = silos[silo_index]->pos;
-        Vector2 diff = Vector2Subtract(new_missile->dest, new_missile->pos);
-        Vector2 norm = Vector2Normalize(diff);
-        new_missile->vel = Vector2Scale(norm, enemy_missile_speed);
-        missiles.push_back(new_missile);
+        Vector2 ipos = {(float)rng.rand(ScreenWidth), 0};
+        int silo_index = (int)rng.rand(silos.size());
+        Vector2 dest = silos[silo_index]->pos;
+        create_missile(missiles, ipos, dest, enemy_missile_flyweight);
       }
     };
 
@@ -177,26 +103,32 @@ int main() {
       Vector2 diff = Vector2Subtract(missile->dest, missile->pos);
       float length = Vector2Length(diff);
       if (length < missile_dest_tolerance) {
-        Explosion *new_explosion = new Explosion;
-        new_explosion->pos = missile->dest;
-        new_explosion->rad = 0.;
-        new_explosion->growth_dir = 1.;
-        new_explosion->growth_speed = explosion_growth_speed;
-        new_explosion->max_rad = explosion_max_rad;
-        explosions.push_back(new_explosion);
         PlaySound(explosion_sound);
-
+        create_explosion(explosions, missile->dest);
         delete missile;
         missiles.erase(missiles.begin() + i);
       }
     }
 
+    // Remove dead explosions
     for (int i = explosions.size() - 1; i >= 0; i--) {
       Explosion *explosion = explosions[i];
       if (explosion->rad < 0.) {
         delete explosion;
-        explosion = nullptr;
         explosions.erase(explosions.begin() + i);
+      }
+    }
+
+    // MOVE
+    for (auto &missile : missiles) {
+      Vector2 diff = Vector2Scale(missile->vel, dt);
+      missile->pos = Vector2Add(missile->pos, diff);
+    }
+
+    for (auto &explosion : explosions) {
+      explosion->rad += explosion->growth_dir * explosion->growth_speed * dt;
+      if (explosion->rad >= explosion->max_rad) {
+        explosion->growth_dir = -1.;
       }
     }
 
@@ -213,7 +145,7 @@ int main() {
     for (auto &missile : missiles) {
       Vector2 start = missile->ipos;
       Vector2 end = missile->pos;
-      DrawLineV(start, end, GREEN);
+      DrawLineV(start, end, missile->flyweight->color);
     }
 
     // Draw explosions
@@ -244,4 +176,28 @@ int main() {
   CloseWindow();
 
   return 0;
+}
+
+void create_missile(vector<Missile *> &missiles, Vector2 ipos, Vector2 dest,
+                    MissileFlyweight *flyweight) {
+  Missile *new_missile = new Missile;
+  new_missile->dest = dest;
+  // CHANGE THIS TO A FUNCTION select_silo(Vector2 dest) LATER
+  Vector2 dest_diff = Vector2Subtract(dest, ipos);
+  Vector2 norm = Vector2Normalize(dest_diff);
+  new_missile->ipos = Vector2Add(ipos, Vector2Scale(norm, cannon_length));
+  new_missile->pos = new_missile->ipos;
+  new_missile->vel = Vector2Scale(norm, flyweight->speed);
+  new_missile->flyweight = flyweight;
+  missiles.push_back(new_missile);
+}
+
+void create_explosion(vector<Explosion *> &explosions, Vector2 pos) {
+  Explosion *new_explosion = new Explosion;
+  new_explosion->pos = pos;
+  new_explosion->rad = 0.;
+  new_explosion->growth_dir = 1.;
+  new_explosion->growth_speed = explosion_growth_speed;
+  new_explosion->max_rad = explosion_max_rad;
+  explosions.push_back(new_explosion);
 }
