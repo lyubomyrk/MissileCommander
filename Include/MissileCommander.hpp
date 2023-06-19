@@ -56,6 +56,13 @@ const float silo_screen_offset = 100.;
 const float cannon_length = 30;
 const float cannon_thickness = 5;
 
+// City
+const int city_count = 6;
+const float city_spacing = 75.;
+const Vector2 city_dims = {25., 25.};
+const Vector2 city_offset = {city_dims.x / 2, city_dims.y / 2};
+const Color city_color = MAGENTA;
+
 // Missiles
 const float missile_dest_tolerance = 5.;
 const float player_missile_speed = 250;
@@ -66,6 +73,7 @@ const float enemy_missile_spawn_time = 2.5;
 const float explosion_growth_speed = 50.;
 const float explosion_max_rad = 40.;
 
+Silo *select_closest_silo(vector<Silo *> &silos, Vector2 dest);
 void create_missile(vector<Missile *> &missiles, Vector2 ipos, Vector2 dest,
                     MissileFlyweight *flyweight);
 void create_explosion(vector<Explosion *> &explosions, Vector2 pos);

@@ -12,7 +12,7 @@ void WELL512::init(unsigned int seed) {
   }
 };
 
-unsigned long WELL512::rand() {
+unsigned long WELL512::well512rand() {
   unsigned long a, b, c, d;
   a = state[index];
   c = state[(index + 13) & 15];
@@ -27,6 +27,11 @@ unsigned long WELL512::rand() {
   return state[index];
 };
 
-unsigned long WELL512::rand(unsigned long max) { return rand() % max; };
+unsigned long WELL512::well512rand(unsigned long max) {
+  if (max != 0)
+    return well512rand() % max;
+  else
+    return 0;
+};
 
-float WELL512::randf() { return (float)rand() / (float)0xFFFFFFFF; };
+float WELL512::randf() { return (float)well512rand() / (float)0xFFFFFFFF; };
