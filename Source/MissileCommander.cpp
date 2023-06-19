@@ -71,174 +71,198 @@ int main() {
   // Create game timers
   float enemy_missile_spawn_timer = 0.;
 
+  // Explosion color changes
+  int explosion_red = 0;
+  int explosion_red_dir = explosion_color_change;
+  int explosion_green = 255;
+  int explosion_green_dir = explosion_color_change;
+  int explosion_blue = 0;
+  int explosion_blue_dir = explosion_color_change;
+
   // GAME LOOP
   bool quit = false;
   while (!WindowShouldClose()) {
-    while (!quit) {
-      float dt = GetFrameTime();
-      enemy_missile_spawn_timer += dt;
-      Vector2 mouse = GetMousePosition();
+    float dt = GetFrameTime();
+    enemy_missile_spawn_timer += dt;
+    Vector2 mouse = GetMousePosition();
 
-      // User input
-      if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        PlaySound(launch_sound);
-        Silo *silo = select_closest_silo(silos, mouse);
-        create_missile(missiles, silo->pos, mouse, player_missile_flyweight);
-      }
+    // User input
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+      PlaySound(launch_sound);
+      Silo *silo = select_closest_silo(silos, mouse);
+      create_missile(missiles, silo->pos, mouse, player_missile_flyweight);
+    }
 
-      // COLLISION CHECKS
-      // Check missile v. explosion collision
-      for (int j = 0; j < explosions.size(); j++) {
-        Explosion *explosion = explosions[j];
-        for (int i = missiles.size() - 1; i >= 0; i--) {
-          Missile *missile = missiles[i];
-          Vector2 diff = Vector2Subtract(missile->pos, explosion->pos);
-          float length = Vector2Length(diff);
-          if (length <= explosion->rad) {
-            create_explosion(explosions, missile->pos);
-            delete missile;
-            missiles.erase(missiles.begin() + i);
-          }
-        }
-      }
-
-      // Check explosion v. silo collision
-      for (int i = silos.size() - 1; i >= 0; i--) {
-        for (int j = 0; j < explosions.size(); j++) {
-          Silo *silo = silos[i];
-          Explosion *explosion = explosions[j];
-          Vector2 diff = Vector2Subtract(silo->pos, explosion->pos);
-          float length = Vector2Length(diff);
-          if (length <= explosion->rad) {
-            delete silo;
-            silos.erase(silos.begin() + i);
-            continue;
-          }
-        }
-      }
-
-      // Check explosion v. city collision
-      for (int i = cities.size() - 1; i >= 0; i--) {
-        for (int j = 0; j < explosions.size(); j++) {
-          City *city = cities[i];
-          Explosion *explosion = explosions[j];
-          Vector2 diff = Vector2Subtract(city->pos, explosion->pos);
-          float length = Vector2Length(diff);
-          if (length <= explosion->rad) {
-            delete city;
-            cities.erase(cities.begin() + i);
-            continue;
-          }
-        }
-      }
-
-      // STATUS
-      // Check loss condition
-      if (silos.size() == 0) {
-        quit = true;
-      }
-
-      // Spawn enemy missiles
-      if (enemy_missile_spawn_timer >= enemy_missile_spawn_time) {
-        enemy_missile_spawn_timer = 0.;
-        int count = rng.well512rand(3) + 1;
-        for (int i = 0; i < count; i++) {
-          Vector2 ipos = {(float)rng.well512rand(ScreenWidth), 0};
-          int city_or_silo = (int)rng.well512rand(4);
-          Vector2 dest;
-          if (city_or_silo == 0) {
-            int silo_index = (int)rng.well512rand(silos.size());
-            dest = silos[silo_index]->pos;
-          } else {
-            int city_index = (int)rng.well512rand(cities.size());
-            dest = cities[city_index]->pos;
-          }
-          create_missile(missiles, ipos, dest, enemy_missile_flyweight);
-        }
-      };
-
-      // Check missile destination reached
+    // COLLISION CHECKS
+    // Check missile v. explosion collision
+    for (int j = 0; j < explosions.size(); j++) {
+      Explosion *explosion = explosions[j];
       for (int i = missiles.size() - 1; i >= 0; i--) {
         Missile *missile = missiles[i];
-        Vector2 diff = Vector2Subtract(missile->dest, missile->pos);
+        Vector2 diff = Vector2Subtract(missile->pos, explosion->pos);
         float length = Vector2Length(diff);
-        if (length < missile_dest_tolerance) {
-          PlaySound(explosion_sound);
-          create_explosion(explosions, missile->dest);
+        if (length <= explosion->rad) {
+          create_explosion(explosions, missile->pos);
           delete missile;
           missiles.erase(missiles.begin() + i);
         }
       }
-
-      // Remove dead explosions
-      for (int i = explosions.size() - 1; i >= 0; i--) {
-        Explosion *explosion = explosions[i];
-        if (explosion->rad < 0.) {
-          delete explosion;
-          explosions.erase(explosions.begin() + i);
-        }
-      }
-
-      // MOVE
-      for (auto &missile : missiles) {
-        Vector2 diff = Vector2Scale(missile->vel, dt);
-        missile->pos = Vector2Add(missile->pos, diff);
-      }
-
-      for (auto &explosion : explosions) {
-        explosion->rad += explosion->growth_dir * explosion->growth_speed * dt;
-        if (explosion->rad >= explosion->max_rad) {
-          explosion->growth_dir = -1.;
-        }
-      }
-
-      // @formatter off
-      BeginDrawing();
-
-      ClearBackground(BLACK);
-      DrawFPS(10, 10);
-
-      // Draw ground
-      DrawRectangleRec(ground_rec, GREEN);
-
-      // Draw missiles
-      for (auto &missile : missiles) {
-        Vector2 start = missile->ipos;
-        Vector2 end = missile->pos;
-        DrawLineV(start, end, missile->flyweight->color);
-      }
-
-      // Draw explosions
-      for (auto &explosion : explosions) {
-        DrawCircleV(explosion->pos, explosion->rad, WHITE);
-      }
-
-      // Draw cannons
-      for (auto &silo : silos) {
-        Rectangle silo_rec = {silo->pos.x, silo->pos.y, silo_dims.x,
-                              silo_dims.y};
-        DrawRectanglePro(silo_rec, silo_offset, 0., BROWN);
-        Vector2 mouse_diff = Vector2Subtract(mouse, silo->pos);
-        Vector2 norm = Vector2Normalize(mouse_diff);
-        DrawLineEx(silo->pos,
-                   Vector2Add(silo->pos, Vector2Scale(norm, cannon_length)),
-                   cannon_thickness, WHITE);
-      }
-
-      // Draw cities
-      for (auto &city : cities) {
-        Rectangle city_rec = {city->pos.x, city->pos.y, city_dims.x,
-                              city_dims.y};
-        DrawRectanglePro(city_rec, city_offset, 0., city_color);
-      }
-
-      // draw crosshair
-      DrawLine(mouse.x - 5, mouse.y - 5, mouse.x + 5, mouse.y + 5, RED);
-      DrawLine(mouse.x + 5, mouse.y - 5, mouse.x - 5, mouse.y + 5, RED);
-
-      EndDrawing();
-      // @formatter on
     }
+
+    // Check explosion v. silo collision
+    for (int i = silos.size() - 1; i >= 0; i--) {
+      for (int j = 0; j < explosions.size(); j++) {
+        Silo *silo = silos[i];
+        Explosion *explosion = explosions[j];
+        Vector2 diff = Vector2Subtract(silo->pos, explosion->pos);
+        float length = Vector2Length(diff);
+        if (length <= explosion->rad) {
+          delete silo;
+          silos.erase(silos.begin() + i);
+          continue;
+        }
+      }
+    }
+
+    // Check explosion v. city collision
+    for (int i = cities.size() - 1; i >= 0; i--) {
+      for (int j = 0; j < explosions.size(); j++) {
+        City *city = cities[i];
+        Explosion *explosion = explosions[j];
+        Vector2 diff = Vector2Subtract(city->pos, explosion->pos);
+        float length = Vector2Length(diff);
+        if (length <= explosion->rad) {
+          delete city;
+          cities.erase(cities.begin() + i);
+          continue;
+        }
+      }
+    }
+
+    // STATUS
+    // Check loss condition
+    if (silos.size() == 0) {
+      break;
+    }
+
+    // Spawn enemy missiles
+    if (enemy_missile_spawn_timer >= enemy_missile_spawn_time) {
+      enemy_missile_spawn_timer = 0.;
+      int count = rng.well512rand(3) + 1;
+      for (int i = 0; i < count; i++) {
+        Vector2 ipos = {(float)rng.well512rand(ScreenWidth), 0};
+        int city_or_silo = (int)rng.well512rand(4);
+        Vector2 dest;
+        if (city_or_silo == 0) {
+          int silo_index = (int)rng.well512rand(silos.size());
+          dest = silos[silo_index]->pos;
+        } else {
+          int city_index = (int)rng.well512rand(cities.size());
+          dest = cities[city_index]->pos;
+        }
+        create_missile(missiles, ipos, dest, enemy_missile_flyweight);
+      }
+    };
+
+    // Check missile destination reached
+    for (int i = missiles.size() - 1; i >= 0; i--) {
+      Missile *missile = missiles[i];
+      Vector2 diff = Vector2Subtract(missile->dest, missile->pos);
+      float length = Vector2Length(diff);
+      if (length < missile_dest_tolerance) {
+        PlaySound(explosion_sound);
+        create_explosion(explosions, missile->dest);
+        delete missile;
+        missiles.erase(missiles.begin() + i);
+      }
+    }
+
+    // Remove dead explosions
+    for (int i = explosions.size() - 1; i >= 0; i--) {
+      Explosion *explosion = explosions[i];
+      if (explosion->rad < 0.) {
+        delete explosion;
+        explosions.erase(explosions.begin() + i);
+      }
+    }
+
+    // MOVE
+    for (auto &missile : missiles) {
+      Vector2 diff = Vector2Scale(missile->vel, dt);
+      missile->pos = Vector2Add(missile->pos, diff);
+    }
+
+    for (auto &explosion : explosions) {
+      explosion->rad += explosion->growth_dir * explosion->growth_speed * dt;
+      if (explosion->rad >= explosion->max_rad) {
+        explosion->growth_dir = -1.;
+      }
+    }
+
+    // @formatter off
+    BeginDrawing();
+
+    ClearBackground(BLACK);
+    DrawFPS(10, 10);
+
+    // Draw ground
+    DrawRectangleRec(ground_rec, GREEN);
+
+    // Draw missiles
+    for (auto &missile : missiles) {
+      Vector2 start = missile->ipos;
+      Vector2 end = missile->pos;
+      DrawLineV(start, end, missile->flyweight->color);
+    }
+
+    // Draw explosions
+    for (auto &explosion : explosions) {
+      explosion_red += explosion_red_dir;
+      if (explosion_red < 0 || explosion_red > 255)
+        explosion_red_dir *= -1;
+      explosion_red = Clamp(explosion_red, 0., 255.);
+
+      explosion_green += explosion_green_dir;
+      if (explosion_green < 0 || explosion_green > 255)
+        explosion_green_dir *= -1;
+      explosion_green = Clamp(explosion_green, 0., 255.);
+
+      explosion_blue += explosion_blue_dir;
+      if (explosion_blue < 0 || explosion_blue > 255)
+        explosion_blue_dir *= -1;
+      explosion_blue = Clamp(explosion_blue, 0., 255.);
+
+      Color color;
+      color.a = 255;
+      color.r = explosion_red;
+      color.g = explosion_green;
+      color.b = explosion_blue;
+      DrawCircleV(explosion->pos, explosion->rad, color);
+    }
+
+    // Draw cannons
+    for (auto &silo : silos) {
+      Rectangle silo_rec = {silo->pos.x, silo->pos.y, silo_dims.x, silo_dims.y};
+      DrawRectanglePro(silo_rec, silo_offset, 0., BROWN);
+      Vector2 mouse_diff = Vector2Subtract(mouse, silo->pos);
+      Vector2 norm = Vector2Normalize(mouse_diff);
+      DrawLineEx(silo->pos,
+                 Vector2Add(silo->pos, Vector2Scale(norm, cannon_length)),
+                 cannon_thickness, WHITE);
+    }
+
+    // Draw cities
+    for (auto &city : cities) {
+      Rectangle city_rec = {city->pos.x, city->pos.y, city_dims.x, city_dims.y};
+      DrawRectanglePro(city_rec, city_offset, 0., city_color);
+    }
+
+    // draw crosshair
+    DrawLine(mouse.x - 5, mouse.y - 5, mouse.x + 5, mouse.y + 5, RED);
+    DrawLine(mouse.x + 5, mouse.y - 5, mouse.x - 5, mouse.y + 5, RED);
+
+    EndDrawing();
+    // @formatter on
   }
 
   CloseAudioDevice();

@@ -72,6 +72,7 @@ const float enemy_missile_spawn_time = 2.5;
 // Explosions
 const float explosion_growth_speed = 50.;
 const float explosion_max_rad = 40.;
+const float explosion_color_change = 40.;
 
 Silo *select_closest_silo(vector<Silo *> &silos, Vector2 dest);
 void create_missile(vector<Missile *> &missiles, Vector2 ipos, Vector2 dest,
