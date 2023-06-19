@@ -64,6 +64,8 @@ const Vector2 city_offset = {city_dims.x / 2, city_dims.y / 2};
 const Color city_color = MAGENTA;
 
 // Missiles
+const float missile_radius = 2.5;
+const float missile_trail_length = 150.;
 const float missile_dest_tolerance = 5.;
 const float player_missile_speed = 250;
 const float enemy_missile_speed = 50.;

@@ -210,9 +210,19 @@ int main() {
 
     // Draw missiles
     for (auto &missile : missiles) {
-      Vector2 start = missile->ipos;
-      Vector2 end = missile->pos;
+      Vector2 start;
+      Vector2 end;
+      if (Vector2Distance(missile->pos, missile->ipos) > missile_trail_length) {
+        Vector2 dir = Vector2Normalize(missile->vel);
+        Vector2 trail = Vector2Scale(dir, missile_trail_length);
+        Vector2 start = Vector2Subtract(missile->pos, trail);
+        Vector2 end = missile->pos;
+      } else {
+        start = missile->ipos;
+        end = missile->pos;
+      }
       DrawLineV(start, end, missile->flyweight->color);
+      DrawCircleV(missile->pos, missile_radius, missile->flyweight->color);
     }
 
     // Draw explosions
