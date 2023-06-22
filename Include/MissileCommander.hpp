@@ -7,6 +7,9 @@
 
 using namespace std;
 
+// Game screen
+enum class GameScreen { Title, Game, Game_over };
+
 struct Silo {
   Vector2 pos;
 };
@@ -80,3 +83,7 @@ Silo *select_closest_silo(vector<Silo *> &silos, Vector2 dest);
 void create_missile(vector<Missile *> &missiles, Vector2 ipos, Vector2 dest,
                     MissileFlyweight *flyweight);
 void create_explosion(vector<Explosion *> &explosions, Vector2 pos);
+
+void run_game(vector<Silo *> &silos, vector<City *> &cities,
+              vector<Missile *> &missiles, vector<Explosion *> &explosion,
+              float dt);
